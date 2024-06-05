@@ -6,18 +6,20 @@ export default {
   data() {
     return {
       searchQuery: '',
-      books: []
+      books: [],
+      papers: [],
     };
   },
   methods: {
     async searchBooks() {
       try {
-        const response = await axios.get(`http://localhost:8181/book/findByName`, {
+        const response = await axios.get(`http://localhost:8180/book/findByName`, {
           params: {
             name: this.searchQuery
           }
         });
-        this.books = response.data;
+        this.books = response.data.author;
+        this.papers = response.data.papers;
       } catch (error) {
         console.error('获取书籍数据出错:', error);
       }
@@ -81,16 +83,18 @@ export default {
               </div>
               <div style="flex: 3; display: flex; align-items: center; justify-content: flex-start;">
                 <!-- 右侧部分 -->
-                <div v-for="book in books" :key="book.id">
-                  <span style="display: inline-block;color: white;font-weight: bold;">{{ book.name }}</span><br>
-                <span style="display: block; color: white;">{{book.position}}</span>
+                <div >
+<!--                  v-for="book in books" :key="book.id"-->
+                  <span style="display: inline-block;color: white;font-weight: bold;">{{ books.name }}</span><br>
+                <span style="display: block; color: white;">{{books.position}}</span>
                 </div>
               </div>
             </div>
 
 <!--part 2-->
-          <div  v-for="book in books" :key="book.id" style="height: 100px; background-color: rgba(199, 216, 230, 0.3);padding-left: 10px;font-size: 14px; color: black; display: flex; align-items: center; justify-content: center;text-align: left;">
-              {{book.org}}
+          <div  style="height: 100px; background-color: rgba(199, 216, 230, 0.3);padding-left: 10px;font-size: 14px; color: black; display: flex; align-items: center; justify-content: center;text-align: left;">
+<!--            v-for="book in books" :key="book.id"-->
+              {{books.org}}
           </div>
 <!--part 3-->
           <div style="height: 40px; background-color:rgba(199, 216, 230, 0.3); display: flex; justify-content: space-evenly; align-items: center;">
@@ -185,24 +189,27 @@ export default {
           </div>
 
 <!--           paper-info-->
-          <div class="grid-content bg-purple custom-text" style="flex: 1; background-color: white; display: flex; flex-direction: column;text-align: left;padding-left: 20px;padding-right: 20px;padding-top: 0px">
+          <div v-if="papers.length" class="grid-content bg-purple custom-text" style="flex: 1; background-color: white; display: flex; flex-direction: column;text-align: left;padding-left: 20px;padding-right: 20px;padding-top: 0px">
 
-            <div  style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray; ">
-              <h1 style="font-size: 17px;font-weight:1000;margin-bottom: 3px;"><i class="el-icon-tickets" style="color: red"></i>    Generalizing Graph Neural Networks on Out-of-Distribution Graphs</h1>
-              <p style="font-size: 12px;margin-top:0px;margin-bottom: 8px;color: green">Shaohua Fan, Xiao Wang, Chuan Shi, Peng Cui, Bai Wang</p>
-              <p style="font-size: 13px;margin-top:0px;margin-bottom: 8px;">IEEE TRANSACTIONS ON PATTERN ANALYSIS AND MACHINE INTELLIGENCE no. 1 (2024): 322-337</p>
+            <div  v-for="paper in papers" :key="paper.id" style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray; ">
+              <h1 style="font-size: 17px;font-weight:1000;margin-bottom: 0px;"><i class="el-icon-tickets" style="color: red"></i>
+                {{ paper.title }}</h1>
+              <p style="font-size: 12px;margin-top:0px;margin-bottom: 8px;color: green">
+                {{paper.abstract}}
+              </p>
+              <p style="font-size: 13px;margin-top:0px;margin-bottom: 8px;"></p>
 <!--              footer-->
               <div style="display: flex;  font-size: 13px;padding-bottom: 10px">
                 <div style="width: 10%; border-right: 1px solid lightgray;">
                   <div style="display: flex; align-items: center;">
                     <div style="width: 50%;">引用</div>
-                    <div style="width: 50%;color: green">23</div>
+                    <div style="width: 50%;color: green">{{ paper.doi}}</div>
                   </div>
                 </div>
                 <div style="width: 10%; border-right: 1px solid lightgray;">
                   <div style="display: flex; align-items: center;padding-left: 11px;">
-                    <div style="width: 50%;">预览</div>
-                    <div style="width: 50%;color: green">78</div>
+                    <div style="width: 50%;">year:</div>
+                    <div style="width: 50%;color: green">{{paper.year}}</div>
                   </div>
                 </div>
                 <div style="width: 10%; border-right: 1px solid lightgray;">
@@ -343,10 +350,11 @@ export default {
           <span style="color: black; font-weight: bold; margin-top: 5px; margin-bottom: 5px; line-height: 1; padding: 10px;">作者统计</span>
           <div style="display: flex; justify-content: flex-start;padding-bottom: 18px;padding-top: 10px;flex-direction:row;">
             <div><img class="aminer" src="../assets/img_3.png" style=" height: 170px;"></div>
-            <div v-for="book in books" :key="book.id" style="display: flex; flex-direction: column; justify-content: center; ">
-              <div style="margin: -80px 0;">#npubs: {{ book.npubs }}</div>
-              <div style="margin: -80px 0;">#ncitation: {{ book.ncitation }}</div>
-              <div style="margin: -80px 0;">#hindex: {{ book.hindex }}</div>
+            <div  style="display: flex; flex-direction: column; justify-content: center; ">
+<!--              v-for="book in books" :key="book.id"-->
+              <div style="margin: -80px 0;">#npubs: {{ books.npubs }}</div>
+              <div style="margin: -80px 0;">#ncitation: {{ books.ncitation }}</div>
+              <div style="margin: -80px 0;">#hindex: {{ books.hindex }}</div>
             </div>
 
           </div>
