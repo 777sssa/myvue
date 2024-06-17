@@ -1,13 +1,21 @@
 <script>
 import Aside from  '../components/Aside.vue'
 import axios from 'axios';
+import { ElPagination } from 'element-ui';
 export default {
   name: "Layout",
+  components:{
+    Aside,
+    ElPagination
+  },
   data() {
     return {
       searchQuery: '',
       books: [],
       papers: [],
+      currentPage: 2,
+      pageSize: 15,
+      totalPapers: 1
     };
   },
   methods: {
@@ -15,18 +23,25 @@ export default {
       try {
         const response = await axios.get(`http://localhost:8180/book/findByName`, {
           params: {
-            name: this.searchQuery
+            name: this.searchQuery,
+            page: this.currentPage,
+            size: this.pageSize
           }
         });
         this.books = response.data.author;
         this.papers = response.data.papers;
+        this.totalPapers = response.data.total;
       } catch (error) {
-        console.error('获取书籍数据出错:', error);
+        console.error('数据出错:', error);
       }
+    },
+    handlePageChange(page) {
+      this.currentPage = page;
+      this.searchBooks();
     }
   },
-  components:{
-    Aside
+  mounted() {
+    this.searchBooks(); // 页面加载时执行一次搜索
   }
 };
 
@@ -79,13 +94,13 @@ export default {
             <div style="height: 110px; background-color: darkslateblue; display: flex; align-items: center;">
               <div style="flex: 1.5; display: flex; align-items: center; justify-content: flex-end;">
                 <!-- 左侧部分 -->
-                <img class="aminer" src="../assets/img_1.png" style="width: 60px; height: 60px; object-fit: cover; margin-right: 20px;">
+                <img class="aminer" :src="books.picture" style="width: 60px; height: 60px; object-fit: cover; margin-right: 20px;">
               </div>
               <div style="flex: 3; display: flex; align-items: center; justify-content: flex-start;">
                 <!-- 右侧部分 -->
                 <div >
 <!--                  v-for="book in books" :key="book.id"-->
-                  <span style="display: inline-block;color: white;font-weight: bold;">{{ books.name }}</span><br>
+                  <span style="display: inline-block;color: white;font-weight: bold;">{{ books.authorName }}</span><br>
                 <span style="display: block; color: white;">{{books.position}}</span>
                 </div>
               </div>
@@ -94,7 +109,7 @@ export default {
 <!--part 2-->
           <div  style="height: 100px; background-color: rgba(199, 216, 230, 0.3);padding-left: 10px;font-size: 14px; color: black; display: flex; align-items: center; justify-content: center;text-align: left;">
 <!--            v-for="book in books" :key="book.id"-->
-              {{books.org}}
+              {{books.authorOrg}}
           </div>
 <!--part 3-->
           <div style="height: 40px; background-color:rgba(199, 216, 230, 0.3); display: flex; justify-content: space-evenly; align-items: center;">
@@ -122,6 +137,7 @@ export default {
           <div style="text-align: left;padding-left: 10px;font-size: 14px;">
             导学生获得顶尖国际数据挖掘竞赛IJCAI Contest 2015 全球冠军。获得北京市高等学校青年英才和师德先锋等称号。
             CCF-腾讯犀牛鸟基金及项目优秀奖，并指导学生获得顶尖国际数据挖掘竞赛IJCAI Contest 2015 全球冠军。获得北京市高等学校青年英才和师德先锋等称号。
+            {{books.profileOrg}}
           </div>
         </div>
 <!--        左3：教育背景-->
@@ -132,26 +148,28 @@ export default {
           </div>
           <div style="text-align: left;padding-left: 10px;font-size: 14px;">
             导学生获得顶尖国际数据挖掘竞赛IJCAI Contest 2015 全球冠军。获得北京市高等学校青年英才和师德先锋等称号。
+            {{books.education}}
           </div>
         </div>
 <!--        左4：工作经历-->
         <div class="grid-content bg-purple custom-text" style="margin-top: -380px;">
-          <span style="display: inline-block; margin-left: -220px;color: royalblue;font-weight: bold;">· 工作经历</span><br>
+          <span style="display: inline-block; margin-left: -220px;color: royalblue;font-weight: bold;">· 研究兴趣</span><br>
           <div style="text-align: center;">
             <hr style="border: none; border-bottom: 2px solid royalblue; width: 280px;">
           </div>
           <div style="text-align: left;padding-left: 10px;font-size: 14px;">
             导学生获得顶尖国际数据挖掘竞赛IJCAI Contest 2015 全球冠军。获得北京市高等学校青年英才和师德先锋等称号。
+            {{books.interests}}
           </div>
         </div>
 <!--        左5-->
         <div class="grid-content bg-purple custom-text" style="margin-top: -300px;">
-          <span style="display: inline-block; margin-left: -250px;color: royalblue;font-weight: bold;">· 奖项</span><br>
+          <span style="display: inline-block; margin-left: -250px;color: royalblue;font-weight: bold;">· 邮件</span><br>
           <div style="text-align: center;">
             <hr style="border: none; border-bottom: 2px solid royalblue; width: 280px;">
           </div>
           <div style="text-align: left;padding-left: 10px;font-size: 14px;">
-            导学生获得顶尖国际数据挖掘竞赛IJCAI Contest 2015 全球冠军。获得北京市高等学校青年英才和师德先锋等称号。
+            {{books.email}}
           </div>
         </div>
       </el-aside>
@@ -199,145 +217,41 @@ export default {
               </p>
               <p style="font-size: 13px;margin-top:0px;margin-bottom: 8px;"></p>
 <!--              footer-->
-              <div style="display: flex;  font-size: 13px;padding-bottom: 10px">
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;">
-                    <div style="width: 50%;">引用</div>
-                    <div style="width: 50%;color: green">{{ paper.doi}}</div>
-                  </div>
-                </div>
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;padding-left: 11px;">
-                    <div style="width: 50%;">year:</div>
-                    <div style="width: 50%;color: green">{{paper.year}}</div>
-                  </div>
-                </div>
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;padding-left: 11px">
-                    <i class="el-icon-share" style="color: darkslategrey;padding-right: 4px"></i>
-                    <div> 引用</div>
-                  </div>
-                </div>
-              </div>
+<!--              <div style="display: flex;  font-size: 13px;padding-bottom: 10px">-->
+<!--                <div style="width: 10%; border-right: 1px solid lightgray;">-->
+<!--                  <div style="display: flex; align-items: center;">-->
+<!--                    <div style="width: 50%;">引用</div>-->
+<!--                    <div style="width: 50%;color: green">{{ paper.doi}}</div>-->
+<!--                  </div>-->
+<!--                </div>-->
+<!--                <div style="width: 10%; border-right: 1px solid lightgray;">-->
+<!--                  <div style="display: flex; align-items: center;padding-left: 11px;">-->
+<!--                    <div style="width: 50%;">year:</div>-->
+<!--                    <div style="width: 50%;color: green">{{paper.year}}</div>-->
+<!--                  </div>-->
+<!--                </div>-->
+<!--              </div>-->
+            </div>
+            <div class="pagination-container">
+              <el-pagination
+                  background
+                  @current-change="handlePageChange"
+                  :current-page="currentPage"
+                  :page-size="pageSize"
+                  :page-sizes="[totalPapers]"
+                  layout="total, prev, pager, next"
+                  :total="totalPapers"
+                  >
+
+              </el-pagination>
+              <h>{{totalPapers}}</h>
             </div>
 
-            <div style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray">
-              <h1 style="font-size: 17px;font-weight:1000;margin-bottom: 3px;"><i class="el-icon-tickets" style="color: red"></i>    Generalizing Graph Neural Networks on Out-of-Distribution Graphs</h1>
-              <p style="font-size: 12px;margin-top:0px;margin-bottom: 8px;color: green">Shaohua Fan, Xiao Wang, Chuan Shi, Peng Cui, Bai Wang</p>
-              <p style="font-size: 13px;margin-top:0px;margin-bottom: 8px;">IEEE TRANSACTIONS ON PATTERN ANALYSIS AND MACHINE INTELLIGENCE no. 1 (2024): 322-337</p>
-
-              <div style="display: flex;  font-size: 13px;padding-bottom: 10px">
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;">
-                    <div style="width: 50%;">引用</div>
-                    <div style="width: 50%;color: green">23</div>
-                  </div>
-                </div>
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;padding-left: 11px;">
-                    <div style="width: 50%;">预览</div>
-                    <div style="width: 50%;color: green">78</div>
-                  </div>
-                </div>
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;padding-left: 11px">
-                    <i class="el-icon-share" style="color: darkslategrey;padding-right: 4px"></i>
-                    <div> 引用</div>
-                  </div>
-                </div>
-              </div>
+            <div>
+              <h>{{books.tags}}</h>
             </div>
 
-            <div style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray">
-              <h1 style="font-size: 17px;font-weight:1000;margin-bottom: 3px;"><i class="el-icon-tickets" style="color: red"></i>    Generalizing Graph Neural Networks on Out-of-Distribution Graphs</h1>
-              <p style="font-size: 12px;margin-top:0px;margin-bottom: 8px;color: green">Shaohua Fan, Xiao Wang, Chuan Shi, Peng Cui, Bai Wang</p>
-              <p style="font-size: 13px;margin-top:0px;margin-bottom: 8px;">IEEE TRANSACTIONS ON PATTERN ANALYSIS AND MACHINE INTELLIGENCE no. 1 (2024): 322-337</p>
-
-              <div style="display: flex;  font-size: 13px;padding-bottom: 10px">
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;">
-                    <div style="width: 50%;">引用</div>
-                    <div style="width: 50%;color: green">23</div>
-                  </div>
-                </div>
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;padding-left: 11px;">
-                    <div style="width: 50%;">预览</div>
-                    <div style="width: 50%;color: green">78</div>
-                  </div>
-                </div>
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;padding-left: 11px">
-                    <i class="el-icon-share" style="color: darkslategrey;padding-right: 4px"></i>
-                    <div> 引用</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-
-            <div style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray">
-              <h1 style="font-size: 17px;font-weight:1000;margin-bottom: 3px;"><i class="el-icon-tickets" style="color: red"></i>    Generalizing Graph Neural Networks on Out-of-Distribution Graphs</h1>
-              <p style="font-size: 12px;margin-top:0px;margin-bottom: 8px;color: green">Shaohua Fan, Xiao Wang, Chuan Shi, Peng Cui, Bai Wang</p>
-              <p style="font-size: 13px;margin-top:0px;margin-bottom: 8px;">IEEE TRANSACTIONS ON PATTERN ANALYSIS AND MACHINE INTELLIGENCE no. 1 (2024): 322-337</p>
-
-              <div style="display: flex;  font-size: 13px;padding-bottom: 10px">
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;">
-                    <div style="width: 50%;">引用</div>
-                    <div style="width: 50%;color: green">23</div>
-                  </div>
-                </div>
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;padding-left: 11px;">
-                    <div style="width: 50%;">预览</div>
-                    <div style="width: 50%;color: green">78</div>
-                  </div>
-                </div>
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;padding-left: 11px">
-                    <i class="el-icon-share" style="color: darkslategrey;padding-right: 4px"></i>
-                    <div> 引用</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-
-            <div style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray">
-              <h1 style="font-size: 17px;font-weight:1000;margin-bottom: 3px;"><i class="el-icon-tickets" style="color: red"></i>    Generalizing Graph Neural Networks on Out-of-Distribution Graphs</h1>
-              <p style="font-size: 12px;margin-top:0px;margin-bottom: 8px;color: green">Shaohua Fan, Xiao Wang, Chuan Shi, Peng Cui, Bai Wang</p>
-              <p style="font-size: 13px;margin-top:0px;margin-bottom: 8px;">IEEE TRANSACTIONS ON PATTERN ANALYSIS AND MACHINE INTELLIGENCE no. 1 (2024): 322-337</p>
-
-              <div style="display: flex;  font-size: 13px;padding-bottom: 10px">
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;">
-                    <div style="width: 50%;">引用</div>
-                    <div style="width: 50%;color: green">23</div>
-                  </div>
-                </div>
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;padding-left: 11px;">
-                    <div style="width: 50%;">预览</div>
-                    <div style="width: 50%;color: green">78</div>
-                  </div>
-                </div>
-                <div style="width: 10%; border-right: 1px solid lightgray;">
-                  <div style="display: flex; align-items: center;padding-left: 11px">
-                    <i class="el-icon-share" style="color: darkslategrey;padding-right: 4px"></i>
-                    <div> 引用</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray">块6</div>
-            <div style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray">块7</div>
-            <div style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray">块8</div>
-            <div style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray">块9</div>
-            <div style="flex: 1; background-color: white;">块10</div>
           </div>
-
         </div>
 
       </el-main>
@@ -492,5 +406,14 @@ body > .el-container {
   line-height: 1.5; /* 设置合适的行高 */
   margin-bottom: 30px;
 }
+
+/* 分页距离右边20，距离底边20 */
+.pagination-container .el-pagination{
+  position:absolute;
+  right:20px;
+  bottom:20px;
+
+}
+
 
 </style>
