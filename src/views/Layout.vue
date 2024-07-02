@@ -1,419 +1,461 @@
 <script>
-import Aside from  '../components/Aside.vue'
-import axios from 'axios';
-import { ElPagination } from 'element-ui';
-export default {
-  name: "Layout",
-  components:{
-    Aside,
-    ElPagination
-  },
-  data() {
-    return {
-      searchQuery: '',
-      books: [],
-      papers: [],
-      currentPage: 2,
-      pageSize: 15,
-      totalPapers: 1
+    import Aside from '../components/Aside.vue'
+    import axios from 'axios';
+    import {ElPagination, Pagination} from 'element-ui';
+    import {Chart, registerables} from 'chart.js';
+    import * as d3 from 'd3';
+    import d3Cloud from 'd3-cloud';
+
+    Chart.register(...registerables);
+
+    export default {
+        name: "Layout",
+        components: {
+            Aside,
+            ElPagination:Pagination
+        },
+        data() {
+            return {
+                searchQuery: '',
+                books: [],
+                papers: [],
+                currentPage: 2,
+                pageSize: 15,
+                totalPapers: 1,
+                displayedPapers: [],
+                chartData: {
+                    labels: ['hindex', '出版物数量', '引用量'],
+                    datasets: [{
+                        data: [65, 78, 12],
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.5)',  // 引用的颜色
+                            'rgba(54, 162, 235, 0.5)',  // H-Index的颜色
+                            'rgba(75, 192, 192, 0.5)'   // G-Index的颜色
+                        ],
+                        borderColor: [
+                            'rgb(255, 99, 132)',  // 引用的边框颜色
+                            'rgb(54, 162, 235)',  // H-Index的边框颜色
+                            'rgb(75, 192, 192)'   // G-Index的边框颜色
+                        ],
+                        borderWidth: 1  // 所有扇形区域的边框宽度
+                    }]
+                },
+            };
+        },
+        methods: {
+            async searchBooks() {
+                try {
+                    const response = await axios.get(`http://localhost:8180/book/findByName`, {
+                        params: {
+                            name: this.searchQuery,
+                            page: this.currentPage,
+                            size: this.pageSize
+                        }
+                    });
+                    this.books = response.data.author;
+                    this.papers = response.data.papers;
+
+                    this.totalPapers = this.papers.length; // 总论文数量
+                    this.updateDisplayedPapers(); // 更新显示的论文
+
+                    // this.chartData.datasets[0].data[0] = this.books
+                    this.chartData.datasets[0].data[0] = this.books.hindex;
+                    this.chartData.datasets[0].data[1] = this.books.npubs;
+                    this.chartData.datasets[0].data[2] = this.books.ncitation;
+
+                    console.log("**********")
+                    console.log(this.papers)
+                    console.log("**********")
+
+                    this.$nextTick(() => {
+                        this.renderChart();
+                    });
+
+                } catch (error) {
+                    console.error('数据出错:', error);
+                }
+            },
+            renderChart() {
+                if (this.chart) {
+                    this.chart.destroy(); // 销毁旧的图表实例
+                }
+                this.chart = new Chart(
+                    this.$refs.radarChart, // 使用 ref 引用
+                    {
+                        type: 'polarArea',
+                        data: this.chartData
+                    }
+                );
+            },
+            handlePageChange(page) {
+                this.currentPage = page;
+                // this.searchBooks();
+                this.updateDisplayedPapers();
+                console.log('Current Page:', this.currentPage);
+                console.log('Displayed Papers:', this.displayedPapers);
+
+            },
+            updateDisplayedPapers() {
+                const start = (this.currentPage - 1) * this.pageSize;
+                const end = start + this.pageSize;
+                this.displayedPapers = this.papers.slice(start, end);
+            }
+        },
+        mounted() {
+            this.searchBooks(); // 页面加载时执行一次搜索
+            // new Chart(
+            //     document.getElementById('radarChart'),
+            //     {
+            //         type: 'polarArea',
+            //         data: this.chartData
+            //     }
+            // );
+        }
     };
-  },
-  methods: {
-    async searchBooks() {
-      try {
-        const response = await axios.get(`http://localhost:8180/book/findByName`, {
-          params: {
-            name: this.searchQuery,
-            page: this.currentPage,
-            size: this.pageSize
-          }
-        });
-        this.books = response.data.author;
-        this.papers = response.data.papers;
-        this.totalPapers = response.data.total;
-      } catch (error) {
-        console.error('数据出错:', error);
-      }
-    },
-    handlePageChange(page) {
-      this.currentPage = page;
-      this.searchBooks();
-    }
-  },
-  mounted() {
-    this.searchBooks(); // 页面加载时执行一次搜索
-  }
-};
 
 </script>
 
 <template>
 
-<!--  header-->
-  <el-container class="main-container">
+    <!--  header-->
 
-    <el-header class="fixed-header" style="margin-bottom: 0px;">
-      <el-row>
-        <el-col :span="4"><div class="grid-content bg-purple"><img class="aminer" src="../assets/img.png"></div></el-col>
-        <el-col :span="2"><div class="grid-content bg-purple">333</div></el-col>
-        <el-col :span="2"><div class="grid-content bg-purple">333</div></el-col>
-        <el-col :span="8"><div class="grid-content bg-purple-light" >
-          <input
-              v-model="searchQuery"
-              placeholder="搜索作者名称"
-              @input="searchBooks"
-              style="width: 80%; height: 20px; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; margin-bottom: 10px;"
-              />
-        </div></el-col>
-        <el-col :span="4"><div class="grid-content bg-purple">333</div></el-col>
+    <el-container class="main-container">
+        <div style="width: 100%;">
 
-        <el-col :span="1"><div class="grid-content bg-purple" >
-          <i class="el-icon-upload" style="color: white;font-size: 30px"></i>
-        </div></el-col>
-        <el-col :span="1"><div class="grid-content bg-purple">
-          <i class="el-icon-message-solid" style="color: white;font-size: 30px"></i>
-        </div></el-col>
-        <el-col :span="1"><div class="grid-content bg-purple">
-          <i class="el-icon-s-tools " style="color: white;font-size: 30px"></i>
-        </div></el-col>
-        <el-col :span="1"><div class="grid-content bg-purple" style="color: white;">未登录</div></el-col>
+            <el-header class="fixed-header" style="margin-bottom: 0px; ">
+                <!-- 这里是你想要添加的 div 块的内容 -->
+                <el-row type="flex" justify="center">
+                    <el-col :span="4">
+                        <div class="grid-content logo" style="margin-bottom: 20px;">
+                            <!--            <img src="../assets/img_4.png" alt="Logo" class="logo-image" style="width: 200px;">-->
+                        </div>
+                    </el-col>
+                    <el-col :span="16">
+                        <div class="grid-content menu">
+                            <el-menu mode="horizontal" class="el-menu-demo" background-color="#fff" text-color="#333"
+                                     active-text-color="#409EFF">
+                                <el-menu-item index="1">研创中心</el-menu-item>
+                                <el-menu-item index="2">知识服务</el-menu-item>
+                                <el-menu-item index="3">订阅中心</el-menu-item>
+                                <el-menu-item index="4">期刊大全</el-menu-item>
+                                <el-menu-item index="5">报刊大全</el-menu-item>
+                            </el-menu>
+                        </div>
+                    </el-col>
+                    <el-col :span="4">
+                        <div class="grid-content user-menu"
+                             style="display: flex; justify-content: center; align-items: center; height: 100%">
+                            <el-button type="primary" style="margin-right: 10px;">登录</el-button>
+                            <el-button>注册</el-button>
+                        </div>
+                    </el-col>
+                </el-row>
+            </el-header>
+            <!--    <el-header class="fixed-header" style="margin-bottom: 0px;">-->
+            <div class="top-div">
+                <el-row type="flex" justify="center">
+                    <el-col :span="6">
+                        <div class="grid-content bg-purple"></div>
+                    </el-col>
+                    <el-col :span="12">
+                        <div class="grid-content bg-purple-light"
+                             style="display: flex; justify-content: center; align-items: center;">
+                            <input
+                                    v-model="searchQuery"
+                                    placeholder="搜索作者名称"
+                                    @input="searchBooks"
+                                    style="width: 100%; height: 20px; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc;margin-top: 30px;"
+                            />
+                        </div>
+                    </el-col>
+                    <el-col :span="6">
+                        <div class="grid-content bg-purple"
+                             style="display: flex; justify-content: flex-end; align-items: center;">
+                            <i class="el-icon-upload" style="color: white;font-size: 20px; margin-right: 20px;"></i>
+                            <i class="el-icon-message-solid"
+                               style="color: white;font-size: 20px; margin-right: 20px;"></i>
+                            <i class="el-icon-s-tools" style="color: white;font-size: 20px; margin-right: 20px;"></i>
+                            <span style="color: white;margin-right: 20px;">未登录</span>
+                        </div>
+                    </el-col>
+                </el-row>
+            </div>
 
-      </el-row>
-    </el-header>
+        </div>
 
 
+        <div class="main-body" style="width: 2000px; height: 1000px; border: 2px solid red">
+            <!--      left zuozhexinxi lunwen-->
+            <div class="main-body-left" style="width: 80%; height: 100%; border: 2px solid black">
+                <!--        zuozhexinxi-->
+                <div class="profile-card">
 
-    <el-container style="margin-top: -20px;margin-left: 20px;margin-right: 20px;">
+                    <div>
+                        <img v-if="books.picture" :src="books.picture" alt="Profile Picture" class="profile-pic">
+                    </div>
 
-      <!--    aside-->
-      <el-aside width="330px" class="flex-container" style="border-radius: 20px;border-left: 1px dashed lightgray; ">
-<!--        左1-->
-        <div class="grid-content bg-purple custom-text" style="border-radius: 20px;overflow: hidden;">
-<!--part1-->
+                    <div class="profile-info">
+                        <h1>{{ books.authorName }}</h1>
+                        <p v-if="books.org">{{ books.org }}</p>
+                        <p v-if="books.pos">{{ books.pos }}</p>
+                        <p v-if="books.email">📧 {{ books.email }}</p>
+                        <p v-if="books.phone">📞 {{ books.phone }}</p>
+                        <p v-if="books.gender">🚹 {{ books.gender }}</p>
+                        <p v-if="books.education">{{ books.education }}</p>
+                        <a v-if="books.homepage" :href="books.homepage" target="_blank">Homepage</a>
+<!--                        <div v-if="books.interests && books.interests.length">-->
+<!--                            <span v-for="interest in books.interests" :key="interest" class="interest">{{ interest }}-->
+<!--                            <template>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</template></span>-->
+<!--                        </div>-->
+<!--                        <div v-if="books.interests && books.interests.length" class="interests-container">-->
+<!--                            <span v-for="(interest, index) in books.interests" :key="index" class="interest">-->
+<!--                              {{ interest }}<template v-if="index < interests.length - 1">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</template>-->
+<!--                            </span>-->
+<!--                        </div>-->
+                    </div>
 
-            <div style="height: 110px; background-color: darkslateblue; display: flex; align-items: center;">
-              <div style="flex: 1.5; display: flex; align-items: center; justify-content: flex-end;">
-                <!-- 左侧部分 -->
-                <img class="aminer" :src="books.picture" style="width: 60px; height: 60px; object-fit: cover; margin-right: 20px;">
-              </div>
-              <div style="flex: 3; display: flex; align-items: center; justify-content: flex-start;">
-                <!-- 右侧部分 -->
-                <div >
-<!--                  v-for="book in books" :key="book.id"-->
-                  <span style="display: inline-block;color: white;font-weight: bold;">{{ books.authorName }}</span><br>
-                <span style="display: block; color: white;">{{books.position}}</span>
                 </div>
-              </div>
+                <!--        lunwen-->
+                <div class="lunwen" style="width: 80%; height: 100%;">
+
+                    <div class="content-wrapper">
+                        <div class="grid-content bg-purple custom-text" style="background-color: pink; display: flex; align-items: center; justify-content: center;border-bottom: 1px solid lightgray;margin-bottom: 0px;">
+                            <div style="height: 40px;flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;border-right: 1px solid lightgray;">
+                                <strong>论文</strong>
+                                <span style="color: dimgray;font-size: 13px;padding-left: 8px;padding-top: 5px"> </span>
+                            </div>
+                        </div>
+
+                        <div v-if="displayedPapers.length" class="bg-purple custom-text" style="flex: 1; background-color: white; display: flex; flex-direction: column; text-align: left; padding-left: 20px; padding-right: 20px; padding-top: 0px">
+                            <div v-for="paper in displayedPapers" :key="paper.id" style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray;">
+                                <h1 style="font-size: 17px; font-weight: 1000;"><i class="el-icon-tickets" style="color: red"></i>
+                                    {{ paper.title }}
+                                </h1>
+                                <p style="font-size: 12px; color: green">
+                                    {{ paper.abstract }}
+                                </p>
+                                <p style="font-size: 13px;">
+                                    {{paper.venue}}
+                                </p>
+                                <p style="font-size: 13px;">
+                                    引用量：{{paper.ncitation}}
+                                    发表年份：{{paper.year}}
+                                </p>
+                            </div>
+                        </div>
+
+<!--                        <div v-if="displayedPapers.length" class="grid-content bg-purple custom-text">-->
+<!--                            <div v-for="paper in displayedPapers" :key="paper.id" class="paper-item">-->
+<!--                                <h1 class="paper-title"><i class="el-icon-tickets" style="color: red"></i> {{ paper.title }}</h1>-->
+<!--                                <p class="paper-abstract">{{ paper.abstract }}</p>-->
+<!--                                <p class="paper-details">{{paper.venue}}</p>-->
+<!--                                <p class="paper-details">引用量：{{paper.nCitation}} 发表年份：{{paper.year}}</p>-->
+<!--                            </div>-->
+<!--                        </div>-->
+                        <el-pagination
+                                style="margin-top: 20px; text-align: center;"
+                                background
+                                layout="prev, pager, next"
+                                :current-page="currentPage"
+                                :page-size="pageSize"
+                                :total="totalPapers"
+                                @current-change="handlePageChange"
+                        ></el-pagination>
+                    </div>
+
+                </div>
+
             </div>
 
-<!--part 2-->
-          <div  style="height: 100px; background-color: rgba(199, 216, 230, 0.3);padding-left: 10px;font-size: 14px; color: black; display: flex; align-items: center; justify-content: center;text-align: left;">
-<!--            v-for="book in books" :key="book.id"-->
-              {{books.authorOrg}}
-          </div>
-<!--part 3-->
-          <div style="height: 40px; background-color:rgba(199, 216, 230, 0.3); display: flex; justify-content: space-evenly; align-items: center;">
-            <i class="el-icon-edit" style="font-size: 20px; color: rebeccapurple"></i>
-            <i class="el-icon-message-solid" style="font-size: 20px; color: rebeccapurple"></i>
-            <i class="el-icon-delete" style="font-size: 20px; color: rebeccapurple"></i>
-            <i class="el-icon-s-promotion" style="font-size: 20px; color: rebeccapurple"></i>
-            <i class="el-icon-s-custom" style="font-size: 20px; color: rebeccapurple"></i>
-            <i class="el-icon-s-home" style="font-size: 20px; color: rebeccapurple"></i>
-          </div>
-<!--part 4-->
-          <div style="height: 40px; background-color: rgba(199, 216, 230, 0.3);display: flex; justify-content: space-evenly; align-items: center;">
-            <i class="el-icon-s-flag" style="font-size: 15px; color: rebeccapurple">关注</i>
-          <i class="el-icon-s-check" style="font-size: 15px;color: rebeccapurple">已被认领</i>
-          <i class="el-icon-share" style="font-size: 15px;color: rebeccapurple">分享</i>
-          </div>
+            <!--      right keshihua-->
+            <div style="width: 20%; height: 100%; border: 2px solid black">
+
+                <div>
+
+                    {{books.tags}}
+                </div>
+
+                <div style="background-color: white; margin-top: 0; display: flex; flex-direction: column; align-items: flex-start; border: 1px solid lightgray; margin-bottom: 30px;">
+                    <span style="color: black; font-weight: bold; margin-top: 5px; margin-bottom: 5px; line-height: 1; padding: 10px;">作者统计</span>
+                    <div style="display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; align-items: flex-start; position: relative">
+<!--                        <div style="width: 80%">-->
+                        <div>
+                            <canvas ref="radarChart"></canvas>
+                        </div>
+                        <div style="display: block; unicode-bidi: isolate;">
+                            <p v-for="(value, index) in chartData.datasets[0].data" :key="index"
+                               style="font-size: 10px; line-height: 20px; margin: 0 0;">
+                                <span><strong>{{ chartData.labels[index] }}:</strong></span>
+                                <span>{{ value }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
-
-<!--        左2：个人简介-->
-        <div class="grid-content bg-purple custom-text" style="margin-top: -400px;">
-          <span style="display: inline-block; margin-left: -220px;color: royalblue;font-weight: bold;">· 个人简介</span><br>
-          <div style="text-align: center;">
-            <hr style="border: none; border-bottom: 2px solid royalblue; width: 280px;">
-          </div>
-          <div style="text-align: left;padding-left: 10px;font-size: 14px;">
-            导学生获得顶尖国际数据挖掘竞赛IJCAI Contest 2015 全球冠军。获得北京市高等学校青年英才和师德先锋等称号。
-            CCF-腾讯犀牛鸟基金及项目优秀奖，并指导学生获得顶尖国际数据挖掘竞赛IJCAI Contest 2015 全球冠军。获得北京市高等学校青年英才和师德先锋等称号。
-            {{books.profileOrg}}
-          </div>
-        </div>
-<!--        左3：教育背景-->
-        <div class="grid-content bg-purple custom-text" style="margin-top: -380px;">
-          <span style="display: inline-block; margin-left: -220px;color: royalblue;font-weight: bold;">· 教育背景</span><br>
-          <div style="text-align: center;">
-            <hr style="border: none; border-bottom: 2px solid royalblue; width: 280px;">
-          </div>
-          <div style="text-align: left;padding-left: 10px;font-size: 14px;">
-            导学生获得顶尖国际数据挖掘竞赛IJCAI Contest 2015 全球冠军。获得北京市高等学校青年英才和师德先锋等称号。
-            {{books.education}}
-          </div>
-        </div>
-<!--        左4：工作经历-->
-        <div class="grid-content bg-purple custom-text" style="margin-top: -380px;">
-          <span style="display: inline-block; margin-left: -220px;color: royalblue;font-weight: bold;">· 研究兴趣</span><br>
-          <div style="text-align: center;">
-            <hr style="border: none; border-bottom: 2px solid royalblue; width: 280px;">
-          </div>
-          <div style="text-align: left;padding-left: 10px;font-size: 14px;">
-            导学生获得顶尖国际数据挖掘竞赛IJCAI Contest 2015 全球冠军。获得北京市高等学校青年英才和师德先锋等称号。
-            {{books.interests}}
-          </div>
-        </div>
-<!--        左5-->
-        <div class="grid-content bg-purple custom-text" style="margin-top: -300px;">
-          <span style="display: inline-block; margin-left: -250px;color: royalblue;font-weight: bold;">· 邮件</span><br>
-          <div style="text-align: center;">
-            <hr style="border: none; border-bottom: 2px solid royalblue; width: 280px;">
-          </div>
-          <div style="text-align: left;padding-left: 10px;font-size: 14px;">
-            {{books.email}}
-          </div>
-        </div>
-      </el-aside>
-
-
-<!--      main-->
-      <el-main style="display: flex; flex-direction: column; padding-top: 0;">
-        <!-- 中1 -->
-        <div style="background-color: white; margin-top: 0; display: flex; flex-direction: column; align-items: flex-start; border: 1px solid lightgray; margin-bottom: 30px;">
-          <span style="color: black; font-weight: bold; margin-top: 5px; margin-bottom: 5px; line-height: 1; padding: 10px;">研究兴趣</span>
-          <div style="display: flex; justify-content: flex-start;">
-            <img class="aminer" src="../assets/img_2.png" style="width: 100%; height: 200px;">
-          </div>
-        </div>
-
-        <!-- 中2 -->
-        <div style="flex: 1; background-color: white; display: flex; flex-direction: column; height: auto; border: 1px solid lightgray;">
-
-<!--            title-->
-          <div class="grid-content bg-purple custom-text" style="background-color: pink; display: flex; align-items: center; justify-content: center;border-bottom: 1px solid lightgray;margin-bottom: 0px;">
-            <div style="height: 40px;flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;border-right: 1px solid lightgray;">
-              <strong>论文</strong>
-              <span style="color: dimgray;font-size: 13px;padding-left: 8px;padding-top: 5px">  共399篇</span>
-            </div>
-            <div style="height: 40px;flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;border-right: 1px solid lightgray;">
-              <strong>专利</strong>
-              <span style="color: dimgray;font-size: 13px;padding-left: 8px;padding-top: 5px">  共40篇</span>
-            </div>
-            <div style="height: 40px;flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;border-right: 1px solid lightgray;">
-              <strong>基金项目</strong>
-              <span style="color: dimgray;font-size: 13px;padding-left: 8px;padding-top: 5px">  共55篇</span>
-            </div>
-            <div style="height: 40px;flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;"></div>
-            <div style="height: 40px;flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;"></div>
-          </div>
-
-<!--           paper-info-->
-          <div v-if="papers.length" class="grid-content bg-purple custom-text" style="flex: 1; background-color: white; display: flex; flex-direction: column;text-align: left;padding-left: 20px;padding-right: 20px;padding-top: 0px">
-
-            <div  v-for="paper in papers" :key="paper.id" style="flex: 1; background-color: white; border-bottom: 1px dashed lightgray; ">
-              <h1 style="font-size: 17px;font-weight:1000;margin-bottom: 0px;"><i class="el-icon-tickets" style="color: red"></i>
-                {{ paper.title }}</h1>
-              <p style="font-size: 12px;margin-top:0px;margin-bottom: 8px;color: green">
-                {{paper.abstract}}
-              </p>
-              <p style="font-size: 13px;margin-top:0px;margin-bottom: 8px;"></p>
-<!--              footer-->
-<!--              <div style="display: flex;  font-size: 13px;padding-bottom: 10px">-->
-<!--                <div style="width: 10%; border-right: 1px solid lightgray;">-->
-<!--                  <div style="display: flex; align-items: center;">-->
-<!--                    <div style="width: 50%;">引用</div>-->
-<!--                    <div style="width: 50%;color: green">{{ paper.doi}}</div>-->
-<!--                  </div>-->
-<!--                </div>-->
-<!--                <div style="width: 10%; border-right: 1px solid lightgray;">-->
-<!--                  <div style="display: flex; align-items: center;padding-left: 11px;">-->
-<!--                    <div style="width: 50%;">year:</div>-->
-<!--                    <div style="width: 50%;color: green">{{paper.year}}</div>-->
-<!--                  </div>-->
-<!--                </div>-->
-<!--              </div>-->
-            </div>
-            <div class="pagination-container">
-              <el-pagination
-                  background
-                  @current-change="handlePageChange"
-                  :current-page="currentPage"
-                  :page-size="pageSize"
-                  :page-sizes="[totalPapers]"
-                  layout="total, prev, pager, next"
-                  :total="totalPapers"
-                  >
-
-              </el-pagination>
-              <h>{{totalPapers}}</h>
-            </div>
-
-            <div>
-              <h>{{books.tags}}</h>
-            </div>
-
-          </div>
-        </div>
-
-      </el-main>
-
-
-<!--          右侧-->
-
-      <el-aside style="width:320px; display: flex; flex-direction: column; padding-top: 0;margin-right: 10px;">
-        <div style="background-color: white; margin-top: 0; display: flex; flex-direction: column; align-items: flex-start; border: 1px solid lightgray; margin-bottom: 30px;">
-          <span style="color: black; font-weight: bold; margin-top: 5px; margin-bottom: 5px; line-height: 1; padding: 10px;">作者统计</span>
-          <div style="display: flex; justify-content: flex-start;padding-bottom: 18px;padding-top: 10px;flex-direction:row;">
-            <div><img class="aminer" src="../assets/img_3.png" style=" height: 170px;"></div>
-            <div  style="display: flex; flex-direction: column; justify-content: center; ">
-<!--              v-for="book in books" :key="book.id"-->
-              <div style="margin: -80px 0;">#npubs: {{ books.npubs }}</div>
-              <div style="margin: -80px 0;">#ncitation: {{ books.ncitation }}</div>
-              <div style="margin: -80px 0;">#hindex: {{ books.hindex }}</div>
-            </div>
-
-          </div>
-        </div>
-
-        <div style="flex: 1; background-color: white; display: flex; flex-direction: column; height: auto; border: 1px solid lightgray;margin-top: 0px">
-<!--          title-->
-          <div class="grid-content bg-purple custom-text" style="background-color: pink; display: flex; justify-content: center; align-items: center;border-bottom: 1px solid lightgray;margin-bottom: 0px;">
-            <div style="height: 40px; flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;">合作学者</div>
-            <div style="height: 40px;flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;">合作机构</div>
-            <div style="height: 40px;flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;">D-Core</div>
-            <div style="height: 40px;flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;">
-              <i class="el-icon-s-data" style="height: 60px;width:50px;padding-top: 40px;color: blue"></i>
-            </div>
-            <div style="height: 40px;flex-grow: 1; background-color: white; display: flex; align-items: center; justify-content: center;"></div>
-          </div>
-<!--              autor-info-->
-          <div class="grid-content bg-purple custom-text" style="flex: 1; background-color: white; display: flex; flex-direction: column;text-align: left;padding-top: -20px">
-
-<!--            autor-1-->
-            <div style="display: flex; justify-content: space-between; background-color: white; border-bottom: 1px dashed lightgray;">
-              <div style="width: 25%;background-color: white;display: flex; justify-content: center; align-items: center;">
-                <img class="aminer" src="../assets/img_1.png" style=" width:50px;height:50px; border: 1px solid green;border-radius: 50%;">
-              </div>
-              <div style="width: 50%;">
-                <h1 style="font-size: 14px; font-weight: 1000; margin-bottom: 3px;">Xiao Wang (王啸）</h1>
-                <p style="font-size: 13px; margin-top: 0; margin-bottom: 8px; color: dimgray;">School of Software</p>
-              </div>
-              <div style="flex: 1;background-color: white;text-align: center;">
-                <h1 style="font-size: 12px;  margin-bottom: 3px;color: dimgray">合作论文数</h1>
-                <p style="font-size: 16px; margin-top: 0; margin-bottom: 8px; color: blue;">30</p>
-              </div>
-            </div>
-
-<!--            autor-2-->
-            <div style="display: flex; justify-content: space-between; background-color: white; border-bottom: 1px dashed lightgray;">
-              <div style="width: 25%;background-color: white;display: flex; justify-content: center; align-items: center;">
-                <img class="aminer" src="../assets/img_1.png" style=" width:50px;height:50px; border: 1px solid green;border-radius: 50%;">
-              </div>
-              <div style="width: 50%;">
-                <h1 style="font-size: 14px; font-weight: 1000; margin-bottom: 3px;">Xiao Wang (王啸）</h1>
-                <p style="font-size: 13px; margin-top: 0; margin-bottom: 8px; color: dimgray;">School of Software</p>
-              </div>
-              <div style="flex: 1;background-color: white;text-align: center;">
-                <h1 style="font-size: 12px;  margin-bottom: 3px;color: dimgray">合作论文数</h1>
-                <p style="font-size: 16px; margin-top: 0; margin-bottom: 8px; color: blue;">30</p>
-              </div>
-            </div>
-
-<!--              autor-3-->
-
-            <div style="display: flex; justify-content: space-between; background-color: white; border-bottom: 1px dashed lightgray;">
-              <div style="width: 25%;background-color: white;display: flex; justify-content: center; align-items: center;">
-                <img class="aminer" src="../assets/img_1.png" style=" width:50px;height:50px; border: 1px solid green;border-radius: 50%;">
-              </div>
-              <div style="width: 50%;">
-                <h1 style="font-size: 14px; font-weight: 1000; margin-bottom: 3px;">Xiao Wang (王啸）</h1>
-                <p style="font-size: 13px; margin-top: 0; margin-bottom: 8px; color: dimgray;">School of Software</p>
-              </div>
-              <div style="flex: 1;background-color: white;text-align: center;">
-                <h1 style="font-size: 12px;  margin-bottom: 3px;color: dimgray">合作论文数</h1>
-                <p style="font-size: 16px; margin-top: 0; margin-bottom: 8px; color: blue;">30</p>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-      </el-aside>
-
-
     </el-container>
-  </el-container>
 
 </template>
 
 <style scoped>
-.fixed-header {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  z-index: 999; /* 确保 Header 处于最顶层 */
+    .fixed-header {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 999; /* 确保 Header 处于最顶层 */
 
-}
+    }
 
-.main-container {
-  padding-top: 60px; /* 调整容器上边距，避免内容被 Header 遮挡 */
-}
-.el-header, .el-footer {
+    .main-container {
+        padding-top: 0px; /* 调整容器上边距，避免内容被 Header 遮挡 */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
 
-  background: linear-gradient(to right, midnightblue, purple);
-  color: #333;
-  text-align: center;
-  line-height: 60px;
-}
+    .main-body {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
 
-.el-aside {
-  background-color: white;
-  color: #333;
-  text-align: center;
-  line-height: 200px;
-}
+    .main-body-left {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
 
-.el-main {
-  background-color: white;
-  color: #333;
-  text-align: center;
-  line-height: 160px;
-}
+    .el-header, .el-footer {
 
-body > .el-container {
-  margin-bottom: 40px;
-}
+        background: white;
+        color: #333;
+        text-align: center;
+        line-height: 60px;
+    }
 
-.el-container:nth-child(5) .el-aside,
-.el-container:nth-child(6) .el-aside {
-  line-height: 260px;
-}
+    .el-aside {
+        background-color: white;
+        color: #333;
+        text-align: center;
+        line-height: 200px;
+    }
 
-.el-container:nth-child(7) .el-aside {
-  line-height: 320px;
-}
-.aminer{
-  width: 180px;
-  height: 60px;
-}
+    .el-main {
+        background-color: white;
+        color: #333;
+        text-align: center;
+        line-height: 160px;
+    }
 
-.flex-container {
-  display: flex;
-  flex-direction: column; /* 垂直布局 */
-  justify-content: space-between; /* 均匀分配子项，上下留有空间 */
-}
+    body > .el-container {
+        margin-bottom: 40px;
+    }
 
-.custom-text {
-  line-height: 1.5; /* 设置合适的行高 */
-  margin-bottom: 30px;
-}
+    .el-container:nth-child(5) .el-aside,
+    .el-container:nth-child(6) .el-aside {
+        line-height: 260px;
+    }
 
-/* 分页距离右边20，距离底边20 */
-.pagination-container .el-pagination{
-  position:absolute;
-  right:20px;
-  bottom:20px;
+    .el-container:nth-child(7) .el-aside {
+        line-height: 320px;
+    }
 
-}
+    .profile-card {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        border: 2px solid #000;
+        padding: 20px;
+        margin: 30px auto;
+        /*max-width: 600px;*/
+        width: 80%;
+    }
 
+    .profile-pic {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        margin-right: 20px;
+    }
+
+    .profile-info {
+        flex: 1;
+    }
+
+    .profile-info h1 {
+        margin: 0;
+        font-size: 24px;
+    }
+
+    .profile-info p, .profile-info a {
+        margin: 4px 0;
+        font-size: 16px;
+        color: #333;
+    }
+
+    .interest {
+        display: inline-block;
+        background: #eee;
+        padding: 5px 10px;
+        margin: 5px;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .aminer {
+        width: 180px;
+        height: 60px;
+    }
+
+    .flex-container {
+        display: flex;
+        flex-direction: column; /* 垂直布局 */
+        justify-content: space-between; /* 均匀分配子项，上下留有空间 */
+    }
+
+    .custom-text {
+        line-height: 1.5; /* 设置合适的行高 */
+        margin-bottom: 30px;
+    }
+
+    /* 分页距离右边20，距离底边20 */
+    .pagination-container .el-pagination {
+        position: absolute;
+        right: 20px;
+        bottom: 20px;
+
+    }
+
+    .top-div {
+        background-color: royalblue;
+        /*padding:  0;*/
+        width: 100%;
+        /*margin-top: 30px;*/
+    }
+
+    .grid-content {
+        text-align: center;
+        line-height: 120px;
+    }
+
+    .content-wrapper {
+        width: 80%;
+        margin: 0 auto;
+        background-color: white;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .lunwen {
+        height: 100%;
+        border: 2px solid pink;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto; /* 使论文部分可以滚动 */
+    }
 
 </style>

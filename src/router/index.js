@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import Book from '../views/BookView.vue'
 import Layout from "@/views/Layout.vue";
+import HomePage from "@/views/HomePage";
 
 Vue.use(VueRouter)
 
@@ -27,6 +28,10 @@ const routes = [
   {
     path: '/layout',
     component: Layout
+  },
+  {
+    path: '/homepage',
+    component:()=>import('../views/HomePage.vue')
   }
 ]
 
